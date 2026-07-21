@@ -27,12 +27,12 @@ export type ChatDaemonAction = "stop" | "reload";
  * Generation 6 carries the retained managed filesystem authority boundary.
  * Generation 7 restores macOS daemon signaling (kill(2) with a start-time
  * incarnation recheck) so a live/hung owner can be replaced without an external
- * `kill -9`. Generation 8 adopts Windows expected-identity ACL verification and
- * repair for shared native authority.
+ * `kill -9`. Generation 9 adopts the native atomic-publish outcome contract so
+ * every provider replaces owners only through the same retained authority.
  */
 export const CHAT_DAEMON_GENERATIONS: Readonly<Record<ChatDaemonKind, number>> = {
-	discord: 8,
-	slack: 8,
+	discord: 9,
+	slack: 9,
 };
 
 export function chatDaemonGeneration(kind: ChatDaemonKind): number {

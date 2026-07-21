@@ -460,9 +460,11 @@ export declare class Shell {
 }
 
 /**
- * Publish-result wire-contract sentinel. The loader requires this in addition
- * to the release sentinel, so a same-version modern artifact built before the
- * retained-publish contract cannot be selected over a compatible baseline.
+ * Publish-result wire-contract sentinel.
+ *
+ * The loader requires this in addition to the release sentinel, so a
+ * same-version modern artifact built before the retained-publish contract
+ * cannot be selected over a compatible baseline.
  */
 export declare function __piNativesPublishOutcomeV1(): void
 
@@ -1981,6 +1983,7 @@ export interface RecoveryFsPublishDiagnostic {
   schemaVersion: number
   collectionState: string
   osCode?: number
+  syncFailures?: Array<RecoveryFsPublishSyncFailure>
 }
 
 /**
@@ -1999,6 +2002,14 @@ export interface RecoveryFsPublishResult {
   diagnostic: RecoveryFsPublishDiagnostic
 }
 
+/** Bounded, path-free diagnostic evidence for one retained publication. */
+export interface RecoveryFsPublishSyncFailure {
+  phase: string
+  parentRole: string
+  osCode?: number
+  kind: string
+}
+
 export interface RecoveryFsResult {
   ok: boolean
   code?: string
@@ -2009,9 +2020,10 @@ export interface RecoveryFsResult {
 export declare function renameNoReplacePath(sourcePath: string, destinationPath: string): NativeNoReplaceResult
 
 /**
- * Repair the owner-only ACL for an existing path only when its retained
- * no-follow handle still identifies the expected object. The expected
- * identity is checked before any ACL mutation and again after the repair.
+ * Repair an owner-only ACL on a retained expected path.
+ *
+ * Its no-follow handle must still identify the expected object before repair
+ * and again after final ACL verification.
  */
 export declare function repairOwnerOnlyPathSecurityExpected(path: string, kind: "directory" | "file", expectedDev: bigint, expectedIno: bigint): NativeOwnerOnlySecurityResult
 
@@ -2244,8 +2256,8 @@ export declare function verifyOwnerOnlyFdSecurity(path: string, kind: "directory
 export declare function verifyOwnerOnlyPathSecurity(path: string, kind: "directory" | "file"): NativeOwnerOnlySecurityResult
 
 /**
- * Verify owner-only security for the exact expected target using a no-follow
- * handle. The target identity is checked before and after verification.
+ * Verify owner-only ACL security without mutation only when the retained
+ * no-follow handle identifies the expected object before and after inspection.
  */
 export declare function verifyOwnerOnlyPathSecurityExpected(path: string, kind: "directory" | "file", expectedDev: bigint, expectedIno: bigint): NativeOwnerOnlySecurityResult
 
@@ -2280,3 +2292,19 @@ export interface WorkProfile {
  * Returns UTF-16 lines with active SGR codes carried across line boundaries.
  */
 export declare function wrapTextWithAnsi(text: string, width: number, tabWidth: number): Array<string>
+
+/** Bounded, path-free evidence for a parent-directory durability failure. */
+export interface NativePublishSyncFailure {
+  phase: string
+  parentRole: string
+  osCode: number
+  kind: string
+}
+
+/** Bounded, path-free evidence for one atomic publication. */
+export interface NativePublishDiagnostic {
+  schemaVersion: number
+  collectionState: string
+  osCode?: number
+  syncFailures?: Array<NativePublishSyncFailure>
+}

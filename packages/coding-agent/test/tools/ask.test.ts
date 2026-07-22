@@ -2453,6 +2453,44 @@ describe("AskTool deep-interview recorder persistence", () => {
 		expect(warn).toHaveBeenCalledWith(expect.stringContaining("deep-interview round recording failed"));
 	});
 
+	it("preserves a foreign workflow answer without writing its deep-interview metadata", async () => {
+		const recorder = spyOn(deepInterviewRecorder, "appendOrMergeDeepInterviewRound");
+		const tool = new AskTool(createSession({ getSessionId: () => "session-ask" }));
+		const context = createContext({ select: async (_prompt, options) => options[0] });
+
+		const result = await tool.execute(
+			"call-foreign-workflow-metadata",
+			{
+				questions: [
+					{
+						id: "ralplan-approval",
+						question: "Approve the plan?",
+						options: [{ label: "Approve" }, { label: "Revise" }],
+						workflowGate: { stage: "ralplan", kind: "approval" },
+						deepInterview: {
+							round: 0,
+							component: "review-topology",
+							dimension: "topology",
+							ambiguity: 0,
+							intent_contract: {
+								items: [
+									{ id: "artifact:foreign-plan", category: "artifact", statement: "Execute foreign plan" },
+								],
+								confirmation_options: ["Approve"],
+							},
+						},
+					},
+				],
+			},
+			undefined,
+			undefined,
+			context,
+		);
+
+		expect(result.content[0]).toMatchObject({ type: "text", text: "User selected: Approve" });
+		expect(recorder).not.toHaveBeenCalled();
+	});
+
 	it("does not synthesize or record intent authorization on ask timeout", async () => {
 		const recorder = spyOn(deepInterviewRecorder, "appendOrMergeDeepInterviewRound").mockResolvedValue({
 			action: "created",
@@ -3102,6 +3140,29 @@ describe("AskTool Round-0 intent recovery", () => {
 		expect(result.questions[0]).not.toHaveProperty("deepInterview");
 	});
 
+	it("returns bounded corrections for strict-wire intent constraints that local validation must enforce", () => {
+		const roundZeroReview = roundZeroPair();
+		Reflect.deleteProperty(roundZeroReview.questions[0].deepInterview, "intent_contract");
+		roundZeroReview.questions[0].deepInterview.intent_review.observed_items = [];
+		roundZeroReview.questions[0].deepInterview.intent_review.approval_options = [];
+		expect(() => validateAsk(roundZeroReview)).toThrow(
+			"deepInterview.intent_review is post-Round-0 only and requires a positive round",
+		);
+
+		const emptyContract = roundZeroPair();
+		Reflect.deleteProperty(emptyContract.questions[0].deepInterview, "intent_review");
+		emptyContract.questions[0].deepInterview.intent_contract.items = [];
+		emptyContract.questions[0].deepInterview.intent_contract.confirmation_options = [];
+		expect(() => validateAsk(emptyContract)).toThrow(
+			"deepInterview.intent_contract requires non-empty items and confirmation_options",
+		);
+
+		const foreignWorkflowContract = roundZeroPair({ stage: "ralplan", kind: "approval" });
+		Reflect.deleteProperty(foreignWorkflowContract.questions[0].deepInterview, "intent_review");
+		expect(() => validateAsk(foreignWorkflowContract)).toThrow(
+			"deepInterview metadata cannot be combined with a non-deep-interview workflowGate",
+		);
+	});
 	it("terminally rejects every recovery-shaped near-miss before coercion", () => {
 		const recorder = spyOn(deepInterviewRecorder, "appendOrMergeDeepInterviewRound");
 		const gateEmitter = { isUnattended: () => true, emitGate: vi.fn() };
